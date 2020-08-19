@@ -92,6 +92,12 @@ spec:
               --from-file=$(params.configMapKey)=$(resources.inputs.source.path)/$(params.configPath) \
               --dry-run -o yaml | \
               kubectl replace configmap $(params.configMapName) -n $(params.namespace) -f -
+        steps:
+        - name: fail
+          image: busybox
+          script: |
+            echo "Failing"
+            false
       params:
       - name: configPath
         value: $(tt.params.configPath)
