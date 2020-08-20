@@ -161,6 +161,10 @@ spec:
     description: Digest of the image just built.
 
   steps:
+  - name: hello-kubecon
+    image: busybox
+    script: |
+      echo 'Hello, KubeCon!'
   - name: build-and-push
     workingDir: /workspace/source
     image: $(params.BUILDER_IMAGE)
