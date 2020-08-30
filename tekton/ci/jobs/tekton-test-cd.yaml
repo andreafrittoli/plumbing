@@ -83,10 +83,10 @@ metadata:
   namespace: tektonci
 spec:
   params:
-      - name: configPath
-      - name: namespace
-      - name: configMapName
-      - name: configMapKey
+    - name: configPath
+    - name: namespace
+    - name: configMapName
+    - name: configMapKey
   resources:
     inputs:
       - name: source
