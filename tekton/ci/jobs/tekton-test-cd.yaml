@@ -52,7 +52,7 @@ spec:
       - name: sinkUrl
         value: http://el-tekton-cd.$(params.namespace).svc.cluster.local:8080
       - name: gitRevision
-        value: master
+        value: $(params.gitRevision)
       - name: configPath
         value: "label_sync/labels.yaml"
       - name: namespace
