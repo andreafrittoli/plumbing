@@ -63,6 +63,7 @@ spec:
             #!/bin/sh
             set -e
             set +x
+            echo "Hello, I'm fetching the current config"
             kubectl get configmap -n $(params.namespace) \
               $(params.configMapName) -o template \
               --template='{{ index .data "$(params.configMapKey)" }}' > \
