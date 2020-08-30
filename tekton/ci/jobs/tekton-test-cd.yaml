@@ -77,6 +77,36 @@ spec:
           resource: targetCluster
 ---
 apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: deploy-configmap
+  namespace: tektonci
+spec:
+  params:
+      - name: configPath
+      - name: namespace
+      - name: configMapName
+      - name: configMapKey
+  resources:
+    inputs:
+      - name: source
+        type: git
+      - name: targetCluster
+        type: cluster
+  stepTemplate:
+    env:
+    - name: KUBECONFIG
+      value: /workspace/$(resources.inputs.targetCluster.name)/kubeconfig
+  steps:
+  - name: deploy
+    image: gcr.io/tekton-releases/dogfooding/kubectl
+    script: |
+      echo "First time deployment"
+      kubectl create configmap $(params.configMapName) \
+        --from-file=$(params.configMapKey)=$(resources.inputs.source.path)/$(params.configPath) \
+        -n $(params.namespace)
+---
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: test-resource-cd-folder
@@ -99,6 +129,8 @@ spec:
       description: The user agent in the pipeline trigger
   resources:
     - name: source
+      type: git
+    - name: baseSource
       type: git
     - name: target
       type: cluster
@@ -146,5 +178,24 @@ spec:
         inputs:
         - name: source
           resource: source
+        - name: targetCluster
+          resource: target
+    - name: deploy-configmap
+      runAfter: ["deploy-tekton-cd"]
+      taskRef:
+        name: deploy-configmap
+      params:
+        - name: configPath
+          value: label_sync/labels.yaml
+        - name: namespace
+          value: $(params.namespace)
+        - name: configMapName
+          value: label-config-v2
+        - name: configMapKey
+          value: labels.yaml
+      resources:
+        inputs:
+        - name: source
+          resource: baseSource
         - name: targetCluster
           resource: target

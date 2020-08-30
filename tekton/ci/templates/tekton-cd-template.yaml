@@ -109,6 +109,16 @@ spec:
               value: $(tt.params.gitRepository)
             - name: depth
               value: $(tt.params.gitCloneDepth)
+        - name: baseSource
+          resourceSpec:
+            type: git
+            params:
+            - name: revision
+              value: master
+            - name: url
+              value: $(tt.params.gitRepository)
+            - name: depth
+              value: 1
         - name: targetCluster
           resourceRef:
             name: "af-tekton-cadmin"
