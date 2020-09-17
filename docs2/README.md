@@ -1,4 +1,4 @@
-# Infrastructure Documentation
+# Infrastructure Documentation :)
 
 This folder contains our infrastructure documentation. These documents may be
 of interest for the team that maintain the Tekton own CI/CD setup as well as
