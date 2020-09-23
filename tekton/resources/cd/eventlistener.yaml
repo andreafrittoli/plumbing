@@ -85,79 +85,87 @@ spec:
   serviceAccountName: tektoncd
   replicas: 3
   triggers:
-    - name: configmap-deploy-failed
+    - name: cd-pipeline-failed
       interceptors:
         - cel:
             filter: >-
               header.match('ce-type', 'dev.tekton.event.taskrun.failed.v1') &&
               body.taskRun.metadata.labels['triggers.tekton.dev/eventlistener'] == 'tekton-cd' &&
-              body.taskRun.metadata.labels['triggers.tekton.dev/trigger'] == 'configmaps'
+              body.taskRun.metadata.labels['triggers.tekton.dev/trigger'] in ['configmaps', 'folders', 'helm']
       bindings:
-      - ref: configmap-deploy-details
+      - ref: cd-pipeline-type
       - ref: taskrun-meta
       - ref: dashboard-url-dogfooding
       template:
-        name: configmap-deploy-failed-slack
+        name: cd-pipeline-failed-slack
+    - name: cd-pipeline-nightly-release-failed
+      interceptors:
+        - cel:
+            filter: >-
+              header.match('ce-type', 'dev.tekton.event.taskrun.failed.v1') &&
+              body.taskRun.metadata.labels['triggers.tekton.dev/eventlistener'].endsWith('nightly-release-cron') &&
+              body.taskRun.metadata.labels['triggers.tekton.dev/trigger'].endsWith('nightly-release-cron-trigger')
+      bindings:
+      - ref: cd-pipeline-type-nightly
+      - ref: pipelinerun-meta
+      - ref: dashboard-url-dogfooding
+      template:
+        name: cd-pipeline-failed-slack
     - name: github-check-start
       interceptors:
         - cel:
             filter: >-
-              (header.match('ce-type', 'dev.tekton.event.taskrun.started.v1') ||
-              header.match('ce-type', 'dev.tekton.event.taskrun.running.v1')) &&
-              body.taskRun.metadata.labels['triggers.tekton.dev/eventlistener'] == 'tekton-ci-webhook' &&
-              body.taskRun.metadata.labels['tekton.dev/kind'] == 'ci' &&
-              !('tekton.dev/conditionName' in body.taskRun.metadata.labels) &&
-              !('ownerReferences' in body.taskRun.metadata)
-      bindings:
-        - ref: tekton-ci-taskrun-cloudevent
-        - ref: tekton-ci-check-pending
-      template:
-        name: tekton-ci-github-check-update
-    - name: github-check-done
-      interceptors:
-        - cel:
-            filter: >-
-              (header.match('ce-type', 'dev.tekton.event.taskrun.successful.v1') ||
-              header.match('ce-type', 'dev.tekton.event.taskrun.failed.v1')) &&
-              body.taskRun.metadata.labels['triggers.tekton.dev/eventlistener'] == 'tekton-ci-webhook' &&
-              body.taskRun.metadata.labels['tekton.dev/kind'] == 'ci' &&
-              !('tekton.dev/conditionName' in body.taskRun.metadata.labels) &&
-              !('ownerReferences' in body.taskRun.metadata)
-      bindings:
-        - ref: tekton-ci-taskrun-cloudevent
-        - ref: tekton-ci-check-complete
-      template:
-        name: tekton-ci-github-check-update
-    - name: github-check-start-with-owner
-      interceptors:
-        - cel:
-            filter: >-
-              (header.match('ce-type', 'dev.tekton.event.taskrun.started.v1') ||
-              header.match('ce-type', 'dev.tekton.event.taskrun.running.v1')) &&
+              header.match('ce-type', 'dev.tekton.event.taskrun.started.v1') &&
               body.taskRun.metadata.labels['triggers.tekton.dev/eventlistener'] == 'tekton-ci-webhook' &&
               body.taskRun.metadata.labels['tekton.dev/kind'] == 'ci' &&
               !('tekton.dev/conditionName' in body.taskRun.metadata.labels) &&
               'ownerReferences' in body.taskRun.metadata
+            overlays:
+              - key: extensions.repo
+                expression: body.taskRun.metadata.annotations['tekton.dev/gitURL'].parseURL().path.substring(1)
       bindings:
         - ref: tekton-ci-taskrun-cloudevent
         - ref: tekton-ci-check-pending
         - ref: tekton-ci-taskrun-from-pipelinerun-cloudevent
+        - ref: tekton-ci-overlays
       template:
         name: tekton-ci-github-check-update
-    - name: github-check-done-with-owner
+    - name: github-check-success
       interceptors:
         - cel:
             filter: >-
-              ((header.match('ce-type', 'dev.tekton.event.taskrun.successful.v1') &&
+              header.match('ce-type', 'dev.tekton.event.taskrun.successful.v1') &&
+              body.taskRun.metadata.labels['triggers.tekton.dev/eventlistener'] == 'tekton-ci-webhook' &&
+              body.taskRun.metadata.labels['tekton.dev/kind'] == 'ci' &&
+              !('tekton.dev/conditionName' in body.taskRun.metadata.labels) &&
+              'ownerReferences' in body.taskRun.metadata
+            overlays:
+              - key: extensions.repo
+                expression: body.taskRun.metadata.annotations['tekton.dev/gitURL'].parseURL().path.substring(1)
+      bindings:
+        - ref: tekton-ci-taskrun-cloudevent
+        - ref: tekton-ci-check-success
+        - ref: tekton-ci-taskrun-from-pipelinerun-cloudevent
+        - ref: tekton-ci-overlays
+      template:
+        name: tekton-ci-github-check-update
+    - name: github-check-failure
+      interceptors:
+        - cel:
+            filter: >-
+              header.match('ce-type', 'dev.tekton.event.taskrun.failed.v1') &&
               !(body.taskRun.metadata.labels['tekton.dev/pipelineTask'] == 'deploy-configmaps')) ||
-              header.match('ce-type', 'dev.tekton.event.taskrun.failed.v1')) &&
               body.taskRun.metadata.labels['triggers.tekton.dev/eventlistener'] == 'tekton-ci-webhook' &&
               body.taskRun.metadata.labels['tekton.dev/kind'] == 'ci' &&
               !('tekton.dev/conditionName' in body.taskRun.metadata.labels) &&
               'ownerReferences' in body.taskRun.metadata
+            overlays:
+              - key: extensions.repo
+                expression: body.taskRun.metadata.annotations['tekton.dev/gitURL'].parseURL().path.substring(1)
       bindings:
         - ref: tekton-ci-taskrun-cloudevent
-        - ref: tekton-ci-check-complete
+        - ref: tekton-ci-check-failure
         - ref: tekton-ci-taskrun-from-pipelinerun-cloudevent
+        - ref: tekton-ci-overlays
       template:
         name: tekton-ci-github-check-update
